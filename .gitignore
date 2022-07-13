@@ -1,0 +1,5 @@
+#Exclude everything
+./Templates/*
+
+#Exception
+!./Templates/.project_info
