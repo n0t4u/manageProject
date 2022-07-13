@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Author: n0t4u
-# Version: 0.2.0
+# Version: 0.2.1
 
 # Imports
 import argparse
@@ -19,12 +19,18 @@ import sys
 
 # Functions
 
-def createStructure(rootDir, dirs):
-    print(rootDir, dirs)
+def createStructure(rootDir, dirs, tools):
+    print(rootDir, dirs, tools)
     os.makedirs(rootDir) if not os.path.exists(rootDir) else None
     for d in dirs:
         try:
             os.mkdir(os.path.join(rootDir, d))
+        except FileExistsError as e:
+            logging.info(colored("[INFO] %s. Skipping..." % e, "cyan"))
+    os.makedirs(os.path.join(rootDir, "tools")) if not os.path.exists(os.path.join(rootDir, "tools")) else None
+    for d in tools:
+        try:
+            os.mkdir(os.path.join(rootDir,"tools", d))
         except FileExistsError as e:
             logging.info(colored("[INFO] %s. Skipping..." % e, "cyan"))
     return
@@ -143,8 +149,13 @@ if __name__ == '__main__':
     config = json.load(file)
     logging.info(colored("[INFO] Configuration file: ", "cyan") + str(config))
     if args.create:
-        createStructure(rootDir, config["mainDirs"])
-        copyFiles(rootDir, args.create[0], args.create[1], config["files"])
+        try:
+            createStructure(rootDir, config["mainDirs"], config["tools"])
+        except KeyError:
+            tools=[]
+            createStructure(rootDir, config["mainDirs"], tools)
+        finally:
+            copyFiles(rootDir, args.create[0], args.create[1], config["files"])
     elif args.clean:
         clean(rootDir, args.clean[0])
     elif args.scope:
