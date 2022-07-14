@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 # Author: n0t4u
-# Version: 0.2.1
+# Version: 0.2.2
 
 # Imports
 import argparse
 from termcolor import colored
+import ipaddress
 import json
 import logging
 import os
@@ -110,10 +111,35 @@ def cleanDirs(rootDir):
             count += 1
     return count
 
-
-def defineScope(scope):
+def defineScopeFile(rootDir, scope, reset):
+    print("DefineScopeFile", scope, reset, sep="\t")
+    scopeDict= {}
+    with open(scope, "r", encoding="utf-8") as file:
+        for line in file:
+            line = line.rstrip("\n")
+            try:
+                ipaddress.ip_address(line)
+            except ValueError:
+                if re.search(r'^http[s]?:\/\/', line, re.I):
+                    scopeDict[line]="URL"
+                else:
+                    scopeDict[line]="domain"
+            else:
+                scopeDict[line]="IP"
+    with open(os.path.join(rootDir,".project_info"), 'r+') as file:
+        info = json.load(file)
+        if reset:
+            info["scope"] = scopeDict
+        else:
+            info["scope"] = scopeDict | info["scope"]
+        file.seek(0)
+        json.dump(info, file, indent=4)
+        file.truncate()
     return
 
+def defineScope(rootDir, scope, reset):
+    print("DefineScope", scope, reset, sep="\t")
+    return
 
 def showCommands():
     return
@@ -121,12 +147,11 @@ def showCommands():
 
 # Main
 parser = argparse.ArgumentParser(description="Management tool for audit projects.")
-
 optionGroup = parser.add_mutually_exclusive_group(required=True)
 optionGroup.add_argument("--create", dest="create", help="Creates the structure of directories", nargs=2,
                          metavar=('CLIENT', 'PROJECT'))
 optionGroup.add_argument("--clean", dest="clean", help="Removes empty files and/or directories", nargs=1,
-                         choices=["dir", "files", "all"], default="directories")
+                         choices=["dir", "files", "all"])
 optionGroup.add_argument("--scope", dest="scope", help="Defines the scope of the audit.", nargs=1)
 optionGroup.add_argument("-c", "--commands", dest="commands", help="Suggest commands based on the project",
                          action="store_true")
@@ -135,6 +160,7 @@ parser.add_argument("-d", "--dir", dest="rootDir",
                     help="Root directory to work. If not provided, current directory is used.", nargs=1)
 parser.add_argument("--config", dest="config", help="Path to different configuration file.", nargs=1)
 parser.add_argument("-v", "--verbose", dest="verbose", help="Verbose mode.", action="store_true")
+parser.add_argument("--reset", dest="reset", help="Resets scope", action="store_true")
 
 args = parser.parse_args()
 
@@ -149,6 +175,7 @@ if __name__ == '__main__':
     config = json.load(file)
     logging.info(colored("[INFO] Configuration file: ", "cyan") + str(config))
     if args.create:
+        print(colored("[*] Creating project structure ...", "blue"))
         try:
             createStructure(rootDir, config["mainDirs"], config["tools"])
         except KeyError:
@@ -157,10 +184,18 @@ if __name__ == '__main__':
         finally:
             copyFiles(rootDir, args.create[0], args.create[1], config["files"])
     elif args.clean:
+        print(colored("[*] Cleaning project ...", "blue"))
         clean(rootDir, args.clean[0])
     elif args.scope:
-        defineScope()
+        print(colored("[*] Setting project scope ...", "blue"))
+        print(args.scope)
+        if os.path.isfile(args.scope[0]):
+            defineScopeFile(rootDir, args.scope[0], args.reset)
+        else:
+            defineScope(rootDir, args.scope[0], args.reset)
     elif args.commands:
+        print(colored("[*] Showing commands for this project ...", "blue"))
         showCommands()
     else:
+        print("Doing nothing!")
         sys.exit(0)
