@@ -115,17 +115,19 @@ def defineScopeFile(rootDir, scope, reset):
     print("DefineScopeFile", scope, reset, sep="\t")
     scopeDict= {}
     with open(scope, "r", encoding="utf-8") as file:
-        for line in file:
-            line = line.rstrip("\n")
+        for asset in file:
+            asset = asset.rstrip("\n")
             try:
-                ipaddress.ip_address(line)
+                ipaddress.ip_address(asset)
             except ValueError:
-                if re.search(r'^http[s]?:\/\/', line, re.I):
-                    scopeDict[line]="URL"
+                if re.search(r'^http[s]?:\/\/', asset, re.I):
+                    scopeDict[asset]="URL"
+                elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
+                    scopeDict[asset] = "domain"
                 else:
-                    scopeDict[line]="domain"
+                    scopeDict[asset] = "unknown"
             else:
-                scopeDict[line]="IP"
+                scopeDict[asset]="IP"
     with open(os.path.join(rootDir,".project_info"), 'r+') as file:
         info = json.load(file)
         if reset:
@@ -139,6 +141,29 @@ def defineScopeFile(rootDir, scope, reset):
 
 def defineScope(rootDir, scope, reset):
     print("DefineScope", scope, reset, sep="\t")
+    scopeDict = {}
+    scope = scope.split(",")
+    for asset in scope:
+        try:
+            ipaddress.ip_address(asset)
+        except ValueError:
+            if re.search(r'^http[s]?:\/\/', asset, re.I):
+                scopeDict[asset]="URL"
+            elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
+                scopeDict[asset]="domain"
+            else:
+                scopeDict[asset]="unknown"
+        else:
+            scopeDict[asset]="IP"
+    with open(os.path.join(rootDir,".project_info"), 'r+') as file:
+        info = json.load(file)
+        if reset:
+            info["scope"] = scopeDict
+        else:
+            info["scope"] = scopeDict | info["scope"]
+        file.seek(0)
+        json.dump(info, file, indent=4)
+        file.truncate()
     return
 
 def showCommands():
