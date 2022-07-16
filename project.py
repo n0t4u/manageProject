@@ -192,7 +192,7 @@ def parseScope(rootDir):
         return ips, domains, urls, unknown
 
 
-def showCommands(commandList, ips, domains, urls, unknown, reset):
+def showCommands(commandList, ips, domains, urls, unknown, reset, output):
     print(colored("[*] Unit commands", "blue"))
     # print(commandList, scope, sep="\n")
     ipsString = ' '.join(ips)
@@ -231,7 +231,6 @@ def showCommands(commandList, ips, domains, urls, unknown, reset):
             print(command)
     print(colored("[*] Group commands", "blue"))
     print('\n'.join(groupCommands))
-    print(unitCommands, groupCommands)
     with open(os.path.join(rootDir, ".project_info"), 'r+') as file:
         info = json.load(file)
         if reset:
@@ -247,6 +246,12 @@ def showCommands(commandList, ips, domains, urls, unknown, reset):
         file.seek(0)
         json.dump(info, file, indent=4)
         file.truncate()
+        if output:
+            with open(output,"w",encoding="utf-8") as file:
+                file.write("#Unit commands\n")
+                file.write('\n'.join(unitCommands))
+                file.write("\n#Group commands\n")
+                file.write(('\n').join(groupCommands))
     return
 
 
@@ -266,6 +271,7 @@ parser.add_argument("-d", "--dir", dest="rootDir",
 parser.add_argument("--config", dest="config", help="Path to different configuration file.", nargs=1)
 parser.add_argument("-v", "--verbose", dest="verbose", help="Verbose mode.", action="store_true")
 parser.add_argument("--reset", dest="reset", help="Resets scope", action="store_true")
+parser.add_argument("-o","--output", dest="output", help="Commands output file", nargs=1)
 
 args = parser.parse_args()
 
@@ -307,7 +313,7 @@ if __name__ == '__main__':
     elif args.commands:
         print(colored("[*] Showing commands for this project ...", "blue"))
         ips, domains, urls, unknown = parseScope(rootDir)
-        showCommands(config["commands"], ips, domains, urls, unknown, args.reset)
+        showCommands(config["commands"], ips, domains, urls, unknown, args.reset, args.output[0])
     else:
         print("Doing nothing!")
         sys.exit(0)
