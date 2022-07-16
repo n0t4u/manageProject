@@ -31,7 +31,7 @@ def createStructure(rootDir, dirs, tools):
     os.makedirs(os.path.join(rootDir, "tools")) if not os.path.exists(os.path.join(rootDir, "tools")) else None
     for d in tools:
         try:
-            os.mkdir(os.path.join(rootDir,"tools", d))
+            os.mkdir(os.path.join(rootDir, "tools", d))
         except FileExistsError as e:
             logging.info(colored("[INFO] %s. Skipping..." % e, "cyan"))
     return
@@ -100,20 +100,21 @@ def cleanFiles(rootDir):
 
 def cleanDirs(rootDir):
     directories = []
-    count=0
+    count = 0
     for root, dirs, files in os.walk(rootDir, topdown=False, followlinks=False):
         for d in dirs:
-            directories.append(os.path.join(root,d))
-    logging.info(colored("[INFO] Directories: ","cyan") + str(directories))
+            directories.append(os.path.join(root, d))
+    logging.info(colored("[INFO] Directories: ", "cyan") + str(directories))
     for d in directories:
         if len(os.listdir(d)) == 0:
             os.rmdir(d)
             count += 1
     return count
 
+
 def defineScopeFile(rootDir, scope, reset):
     print("DefineScopeFile", scope, reset, sep="\t")
-    scopeDict= {}
+    scopeDict = {}
     with open(scope, "r", encoding="utf-8") as file:
         for asset in file:
             asset = asset.rstrip("\n")
@@ -121,14 +122,14 @@ def defineScopeFile(rootDir, scope, reset):
                 ipaddress.ip_address(asset)
             except ValueError:
                 if re.search(r'^http[s]?:\/\/', asset, re.I):
-                    scopeDict[asset]="URL"
+                    scopeDict[asset] = "URL"
                 elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
                     scopeDict[asset] = "domain"
                 else:
                     scopeDict[asset] = "unknown"
             else:
-                scopeDict[asset]="IP"
-    with open(os.path.join(rootDir,".project_info"), 'r+') as file:
+                scopeDict[asset] = "IP"
+    with open(os.path.join(rootDir, ".project_info"), 'r+') as file:
         info = json.load(file)
         if reset:
             info["scope"] = scopeDict
@@ -138,6 +139,7 @@ def defineScopeFile(rootDir, scope, reset):
         json.dump(info, file, indent=4)
         file.truncate()
     return
+
 
 def defineScope(rootDir, scope, reset):
     print("DefineScope", scope, reset, sep="\t")
@@ -148,14 +150,14 @@ def defineScope(rootDir, scope, reset):
             ipaddress.ip_address(asset)
         except ValueError:
             if re.search(r'^http[s]?:\/\/', asset, re.I):
-                scopeDict[asset]="URL"
+                scopeDict[asset] = "URL"
             elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
-                scopeDict[asset]="domain"
+                scopeDict[asset] = "domain"
             else:
-                scopeDict[asset]="unknown"
+                scopeDict[asset] = "unknown"
         else:
-            scopeDict[asset]="IP"
-    with open(os.path.join(rootDir,".project_info"), 'r+') as file:
+            scopeDict[asset] = "IP"
+    with open(os.path.join(rootDir, ".project_info"), 'r+') as file:
         info = json.load(file)
         if reset:
             info["scope"] = scopeDict
@@ -166,7 +168,85 @@ def defineScope(rootDir, scope, reset):
         file.truncate()
     return
 
-def showCommands():
+
+def parseScope(rootDir):
+    try:
+        with open(os.path.join(rootDir, ".project_info"), 'r+') as file:
+            info = json.load(file)
+            scope = info["scope"]
+    except:
+        print(colored("[!] Unable to find project_info file", "red"))
+        sys.exit(0)
+    else:
+        ips, domains, urls, unknown = [], [], [], []
+        for key, value in scope.items():
+            if value == "IP":
+                ips.append(key)
+            elif value == "domain":
+                domains.append(key)
+            elif value == "URL":
+                urls.append(key)
+            else:
+                unknown.append(key)
+        # print(ips, domains, urls, unknown, sep="\n")
+        return ips, domains, urls, unknown
+
+
+def showCommands(commandList, ips, domains, urls, unknown, reset):
+    print(colored("[*] Unit commands", "blue"))
+    # print(commandList, scope, sep="\n")
+    ipsString = ' '.join(ips)
+    unitCommands = []
+    groupCommands = []
+    for command in commandList:
+        if re.search(r'^#',command):
+            logging.info(colored("[INFO] Command '%s' commented. Skipping." %command, "cyan"))
+            continue
+        if re.search(r'\$IP\$', command):
+            for ip in ips:
+                c = re.sub(r'\$IP\$', ip, command)
+                print(c)
+                unitCommands.append(c)
+            if len(ips) > 1:
+                groupCommand = "for $ip in %s; do %s;done" % (' '.join(ips), re.sub(r'\$IP\$', '$ip', command))
+                groupCommands.append(groupCommand)
+        elif re.search(r'\$DOM\$', command):
+            for dom in domains:
+                c = re.sub(r'\$DOM\$', dom, command)
+                print(c)
+                unitCommands.append(c)
+            if len(domains) > 1:
+                groupCommand = "for $dom in %s; do %s;done" % (' '.join(domains), re.sub(r'\$DOM\$', '$dom', command))
+                groupCommands.append(groupCommand)
+        elif re.search(r'\$URL\$', command):
+            for url in urls:
+                c = re.sub(r'\$URL\$', url, command)
+                print(c)
+                unitCommands.append(c)
+            if len(urls) > 1:
+                groupCommand = "for $url in %s; do %s;done" % (' '.join(urls), re.sub(r'\$URL\$', '$url', command))
+                groupCommands.append(groupCommand)
+        else:
+            unitCommands.append(command)
+            print(command)
+    print(colored("[*] Group commands", "blue"))
+    print('\n'.join(groupCommands))
+    print(unitCommands, groupCommands)
+    with open(os.path.join(rootDir, ".project_info"), 'r+') as file:
+        info = json.load(file)
+        if reset:
+            info["commands"]["unit"] = unitCommands
+            info["commands"]["group"] = groupCommands
+        else:
+            try:
+                info["commands"]["unit"] = info["commands"]["unit"].extend(unitCommands)
+                info["commands"]["group"] = info["commands"]["group"].extend(groupCommands)
+            except:
+                info["commands"]["unit"] = unitCommands
+                info["commands"]["group"] = groupCommands
+        file.seek(0)
+        json.dump(info, file, indent=4)
+        file.truncate()
     return
 
 
@@ -197,14 +277,20 @@ if __name__ == '__main__':
     configFile = args.config[0] if args.config else "%s/.config" % os.getcwd()
     logging.info(colored("[INFO] Configuration file path %s" % configFile, "cyan"))
     file = open(configFile, "r", encoding="utf-8")
-    config = json.load(file)
+    try:
+        config = json.load(file)
+    except json.decoder.JSONDecodeError as e:
+        print(colored("[ERROR] Unable to parse configuration file. Use -v option for more information.", "red"))
+        logging.info(e)
+        sys.exit(0)
+
     logging.info(colored("[INFO] Configuration file: ", "cyan") + str(config))
     if args.create:
         print(colored("[*] Creating project structure ...", "blue"))
         try:
             createStructure(rootDir, config["mainDirs"], config["tools"])
         except KeyError:
-            tools=[]
+            tools = []
             createStructure(rootDir, config["mainDirs"], tools)
         finally:
             copyFiles(rootDir, args.create[0], args.create[1], config["files"])
@@ -220,7 +306,8 @@ if __name__ == '__main__':
             defineScope(rootDir, args.scope[0], args.reset)
     elif args.commands:
         print(colored("[*] Showing commands for this project ...", "blue"))
-        showCommands()
+        ips, domains, urls, unknown = parseScope(rootDir)
+        showCommands(config["commands"], ips, domains, urls, unknown, args.reset)
     else:
         print("Doing nothing!")
         sys.exit(0)

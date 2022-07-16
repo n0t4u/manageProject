@@ -1,5 +1,9 @@
 {
     "client": "CLIENT",
     "project": "PROJECT",
-    "scope": {}
+    "scope": {},
+    "commands":{
+        "unit":[],
+        "group":[]
+        }
 }
