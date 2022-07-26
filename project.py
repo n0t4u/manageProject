@@ -4,6 +4,8 @@
 # Author: n0t4u
 # Version: 0.2.2
 
+# TODO. Subparsers for main options
+
 # Imports
 import argparse
 from termcolor import colored
@@ -192,7 +194,7 @@ def parseScope(rootDir):
         return ips, domains, urls, unknown
 
 
-def showCommands(commandList, ips, domains, urls, unknown, reset, output):
+def showCommands(commandList, tools, ips, domains, urls, unknown, reset, output):
     print(colored("[*] Unit commands", "blue"))
     # print(commandList, scope, sep="\n")
     ipsString = ' '.join(ips)
@@ -202,6 +204,18 @@ def showCommands(commandList, ips, domains, urls, unknown, reset, output):
         if re.search(r'^#',command):
             logging.info(colored("[INFO] Command '%s' commented. Skipping." %command, "cyan"))
             continue
+        if re.search(r'\$PATH\$[\\\/]', command):
+            words= command.split(" ")
+            if words[0] == "sudo" and words[1] in tools:
+                path= os.path.join("tools",words[1],"")
+            elif words[0] in tools:
+                path = os.path.join("tools", words[0],"")
+            else:
+                path = ""
+            print(path, type(path), len(path))
+            #re.error: bad escape (end of pattern) at position 10 <-- path variable
+            #https://stackoverflow.com/questions/18707338/print-raw-string-from-variable-not-getting-the-answers
+            command = re.sub(r'\$PATH\$[\\\/]',repr(path).strip("'"),command)
         if re.search(r'\$IP\$', command):
             for ip in ips:
                 c = re.sub(r'\$IP\$', ip, command)
@@ -313,7 +327,8 @@ if __name__ == '__main__':
     elif args.commands:
         print(colored("[*] Showing commands for this project ...", "blue"))
         ips, domains, urls, unknown = parseScope(rootDir)
-        showCommands(config["commands"], ips, domains, urls, unknown, args.reset, args.output[0])
+        output= args.output[0] if args.output else False
+        showCommands(config["commands"], config["tools"], ips, domains, urls, unknown, args.reset, output)
     else:
         print("Doing nothing!")
         sys.exit(0)
