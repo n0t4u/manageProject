@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Author: n0t4u
-# Version: 0.2.2
+# Version: 0.2.3
 
 # TODO. Subparsers for main options
 
@@ -115,7 +115,7 @@ def cleanDirs(rootDir):
 
 
 def defineScopeFile(rootDir, scope, reset):
-    print("DefineScopeFile", scope, reset, sep="\t")
+    #print("DefineScopeFile", scope, reset, sep="\t")
     scopeDict = {}
     with open(scope, "r", encoding="utf-8") as file:
         for asset in file:
@@ -126,7 +126,10 @@ def defineScopeFile(rootDir, scope, reset):
                 if re.search(r'^http[s]?:\/\/', asset, re.I):
                     scopeDict[asset] = "URL"
                 elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
-                    scopeDict[asset] = "domain"
+                    if not re.search(r'[\S]+:\/\/', asset, re.I):
+                        scopeDict[asset] = "domain"
+                    else:
+                        scopeDict[asset] = "unknown"
                 else:
                     scopeDict[asset] = "unknown"
             else:
@@ -142,7 +145,6 @@ def defineScopeFile(rootDir, scope, reset):
         file.truncate()
     return
 
-
 def defineScope(rootDir, scope, reset):
     print("DefineScope", scope, reset, sep="\t")
     scopeDict = {}
@@ -154,7 +156,10 @@ def defineScope(rootDir, scope, reset):
             if re.search(r'^http[s]?:\/\/', asset, re.I):
                 scopeDict[asset] = "URL"
             elif re.search(r'[\S]+\.[\S]{2,}$', asset, re.I):
-                scopeDict[asset] = "domain"
+                if not re.search(r'[\S]+:\/\/', asset, re.I):
+                    scopeDict[asset] = "domain"
+                else:
+                    scopeDict[asset] = "unknown"
             else:
                 scopeDict[asset] = "unknown"
         else:
@@ -192,7 +197,6 @@ def parseScope(rootDir):
                 unknown.append(key)
         # print(ips, domains, urls, unknown, sep="\n")
         return ips, domains, urls, unknown
-
 
 def showCommands(commandList, tools, ips, domains, urls, unknown, reset, output):
     print(colored("[*] Unit commands", "blue"))
@@ -240,6 +244,14 @@ def showCommands(commandList, tools, ips, domains, urls, unknown, reset, output)
             if len(urls) > 1:
                 groupCommand = "for $url in %s; do %s;done" % (' '.join(urls), re.sub(r'\$URL\$', '$url', command))
                 groupCommands.append(groupCommand)
+        elif re.search(r'\$OTHER\$', command):
+            for unk in unknown:
+                c = re.sub(r'\$OTHER\$', unk, command)
+                print(c)
+                unitCommands.append(c)
+            if len(unknown) > 1:
+                groupCommand = "for $unknown in %s; do %s;done" % (' '.join(unknown), re.sub(r'\$OTHER\$', '$url', command))
+                groupCommands.append(groupCommand)
         else:
             unitCommands.append(command)
             print(command)
@@ -252,20 +264,20 @@ def showCommands(commandList, tools, ips, domains, urls, unknown, reset, output)
             info["commands"]["group"] = groupCommands
         else:
             try:
-                info["commands"]["unit"] = info["commands"]["unit"].extend(unitCommands)
-                info["commands"]["group"] = info["commands"]["group"].extend(groupCommands)
-            except:
+                info["commands"]["unit"].extend(unitCommands)
+                info["commands"]["group"].extend(groupCommands)
+            except Exception as e:
                 info["commands"]["unit"] = unitCommands
                 info["commands"]["group"] = groupCommands
         file.seek(0)
         json.dump(info, file, indent=4)
         file.truncate()
-        if output:
-            with open(output,"w",encoding="utf-8") as file:
-                file.write("#Unit commands\n")
-                file.write('\n'.join(unitCommands))
-                file.write("\n#Group commands\n")
-                file.write(('\n').join(groupCommands))
+    if output:
+        with open(output,"w",encoding="utf-8") as commandFile:
+            commandFile.write("#Unit commands\n")
+            commandFile.write('\n'.join(unitCommands))
+            commandFile.write("\n#Group commands\n")
+            commandFile.write('\n'.join(groupCommands))
     return
 
 

@@ -1,6 +1,6 @@
 # manageProject
 
-Simple Python script to create and manage your hacking projects based on templates
+Simple Python script to create and manage your hacking projects :ghost: based on templates
 
 ## Installation
 ```sh
@@ -15,16 +15,17 @@ echo 'alias project="python3 PATH/TO/FILE/project.py"' >> $HOME/.zshrc
 ## Setup
 To work properly, this tool works with templates and configuration files. If it is the first time using it, you should take into account the following points:
 - All the templates or files you use in every audit must be placed in the Templates folder.
-- Use **$CLIENT$** and **$PROJECT$** reserved words in your file names to change the name of the client or project according to your needs.
+- Use **\$CLIENT\$** and **\$PROJECT\$** reserved words in your file names to change the name of the client or project according to your needs.
 - Modify **.config** file to define:
   - Your project tree ("mainDirs").
   - The location of every file ("files").
   - The common tools ("tools")
   - The commands to auto-generate. Reserved words:
-    - **$IP$**
-    - **$DOM$**
-    - **$URL$**
-    - **$PATH$**
+    - **\$IP\$**
+    - **\$DOM\$**
+    - **\$URL\$**
+    - **\$PATH\$**
+    - **\$OTHER\$**
 
 ## Usage
 **NOTE**. The following commands are meant to be executed in the project work directory. If not, the work directory must be defined with -d/--dir option.
@@ -36,13 +37,14 @@ $ python3 project.py --create CLIENT PROJECT
 ### Define scope
 Define the scope of your audit, 
 ```sh
-$ python3 project.py --scope <FILE> | <A1,A2,A3,...>
+$ python3 project.py --scope <FILE> | <A1,A2,A3,...> [--reset]
 ```
 
 ### Generate commands
-Automatically generate commands that you always use in your audits and execute them easily. 
+Automatically generate commands that you always use in your audits and execute them easily.
+Using the --reset option you can add new commands or remove previous ones.
 ```sh
-$ python3 project.py -c
+$ python3 project.py -c [--reset]
 ```
 
 ### Clean project
