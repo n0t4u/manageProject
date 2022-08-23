@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Author: n0t4u
-# Version: 0.2.4
+# Version: 0.2.5
 
 # TODO. Subparsers for main options
 
@@ -39,13 +39,18 @@ def createStructure(rootDir, dirs, tools):
     return
 
 
-def copyFiles(rootDir, client, project, files):
+def copyFiles(rootDir, client, project, files, templatesDir):
     logging.info(colored("[INFO] Client: %s\tProject: %s" % (client, project), "cyan"))
     logging.info(colored("[INFO] Files: %s" % files, "cyan"))
-    src = os.path.join("templates", ".project_info")
+    src = os.path.join(templatesDir, ".project_info")
     dst = os.path.join(rootDir, ".project_info")
     print(src, dst, sep="\t")
-    shutil.copy2(src, dst)
+    try:
+        shutil.copy2(src, dst)
+    except FileNotFoundError as e:
+        print("[!] .project_info file not found on %s folder" %templatesDir, "yellow")
+        logging.info(e)
+        sys.exit(0)
     with open(dst, 'r+') as f:
         info = json.load(f)
         info["client"] = client
@@ -55,14 +60,14 @@ def copyFiles(rootDir, client, project, files):
         f.truncate()
     for folder, file in files.items():
         for f in file:
-            src = os.path.join("templates", f)
+            src = os.path.join(templatesDir, f)
             newName = re.sub(r'CLIENT', client, f, re.I)
             newName = re.sub(r'PROJECT', project, newName, re.I)
             dst = os.path.join(rootDir, folder, newName)
             try:
                 shutil.copy2(src, dst)
             except FileNotFoundError as e:
-                print(colored("[!] File %s not found on templates folder" % f, "yellow"))
+                print(colored("[!] File %s not found on %s folder" %(f,templatesDir), "yellow"))
                 logging.info(colored("[INFO] %s" % e, "cyan"))
             print(folder, file)
 
@@ -116,11 +121,11 @@ def cleanDirs(rootDir):
 def removeProject(rDir):
     if os.path.exists(rDir):
         path = os.path.abspath(rDir)
-        confirm = input("Are you sure do you want ot remove %s folder and all its content? (y/N)" %path)
+        confirm = input("Are you sure do you want ot remove %s folder and all its content? (y/N)\t" %path)
         if confirm == "y" or confirm == "Y" or confirm == "YES" or confirm == "yes":
             try:
                 shutil.rmtree(path)
-                print(colored("[*] Directory %s has been removed successfully" % rDir, "green"))
+                print(colored("[»] Directory %s has been removed successfully" % rDir, "green"))
             except OSError as e:
                 logging.info(e)
                 print(colored("Directory %s can not be removed" % rDir, "red"))
@@ -305,6 +310,7 @@ optionGroup.add_argument("-c", "--commands", dest="commands", help="Suggest comm
 
 parser.add_argument("-d", "--dir", dest="rootDir",
                     help="Root directory to work. If not provided, current directory is used.", nargs=1)
+parser.add_argument("-t", "--templates", dest="templates", help="Path to the templates folder", nargs=1)
 parser.add_argument("--config", dest="config", help="Path to different configuration file.", nargs=1)
 parser.add_argument("-v", "--verbose", dest="verbose", help="Verbose mode.", action="store_true")
 parser.add_argument("--reset", dest="reset", help="Resets scope", action="store_true")
@@ -319,6 +325,7 @@ if __name__ == '__main__':
     logging.info(colored("[INFO] Working on %s" % rootDir, "cyan"))
     configFile = args.config[0] if args.config else "%s/.config" % os.getcwd()
     logging.info(colored("[INFO] Configuration file path %s" % configFile, "cyan"))
+    templatesDir = args.templates[0] if args.templates else "%s/Templates" %os.getcwd()
     file = open(configFile, "r", encoding="utf-8")
     try:
         config = json.load(file)
@@ -336,7 +343,7 @@ if __name__ == '__main__':
             tools = []
             createStructure(rootDir, config["mainDirs"], tools)
         finally:
-            copyFiles(rootDir, args.create[0], args.create[1], config["files"])
+            copyFiles(rootDir, args.create[0], args.create[1], config["files"],templatesDir)
     elif args.clean:
         print(colored("[*] Cleaning project ...", "blue"))
         clean(rootDir, args.clean[0])
