@@ -17,7 +17,7 @@ To work properly, this tool works with templates and configuration files. If it 
 - All the templates or files you use in every audit must be placed in the Templates folder.
 - Use **\$CLIENT\$** and **\$PROJECT\$** reserved words in your file names to change the name of the client or project according to your needs.
 - Modify **.config** file to define:
-  - Your project tree ("mainDirs").
+  - Your project tree ("mainDirs"). **Important!!** Do not change tools directory as it is use in other functions of the program.
   - The location of every file ("files").
   - The common tools ("tools")
   - The commands to auto-generate. Reserved words:
